@@ -33,6 +33,7 @@
 #include <hardware/power.h>
 
 #define BOOST_PATH      "/sys/devices/system/cpu/cpufreq/intelliactive/boostpulse"
+#define DOUBLE_TAP_TO_WAKE_PATH "/sys/android_touch/doubletap_wake"
 #define UEVENT_MSG_LEN 2048
 #define TOTAL_CPUS 4
 #define RETRY_TIME_CHANGING_FREQ 20
@@ -180,18 +181,44 @@ static void uevent_init()
     return;
 }
 
+static void grouper_power_set_feature(__attribute__((unused)) struct power_module *module, feature_t feature,
+				      __attribute__((unused)) int state)
+{
+    switch (feature) {
+    case POWER_FEATURE_DOUBLE_TAP_TO_WAKE:
+        pthread_mutex_lock(&low_power_mode_lock);
+        sysfs_write(DOUBLE_TAP_TO_WAKE_PATH, state ? "1\n" : "0\n");
+        ALOGD("Set the POWER_FEATURE_DOUBLE_TAP_TO_WAKE to %d\n", state);
+        pthread_mutex_unlock(&low_power_mode_lock);
+        break;
+    default:
+        ALOGW("Error setting the feature, it doesn't exist %d\n", feature);
+        break;
+    }
+}
+
 static void grouper_power_init( __attribute__((unused)) struct power_module *module)
 {
+
+
+
+
+
     sysfs_write("/sys/devices/system/cpu/cpufreq/intelliactive/above_hispeed_delay","20000");
     sysfs_write("/sys/devices/system/cpu/cpufreq/intelliactive/boostpulse","1");
     sysfs_write("/sys/devices/system/cpu/cpufreq/intelliactive/boostpulse_duration","80000");
     sysfs_write("/sys/devices/system/cpu/cpufreq/intelliactive/go_hispeed_load","95");
     sysfs_write("/sys/devices/system/cpu/cpufreq/intelliactive/hispeed_freq","1000000");
+
     sysfs_write("/sys/devices/system/cpu/cpufreq/intelliactive/io_is_busy","1");
+
     sysfs_write("/sys/devices/system/cpu/cpufreq/intelliactive/min_sample_time","20000");
     sysfs_write("/sys/devices/system/cpu/cpufreq/intelliactive/sampling_down_factor","20000");
+
     sysfs_write("/sys/devices/system/cpu/cpufreq/intelliactive/sync_freq","640000");
+
     sysfs_write("/sys/devices/system/cpu/cpufreq/intelliactive/target_loads","85");
+
     sysfs_write("/sys/devices/system/cpu/cpufreq/intelliactive/timer_rate","10000");
     sysfs_write("/sys/devices/system/cpu/cpufreq/intelliactive/timer_slack","40000");
     sysfs_write("/sys/devices/system/cpu/cpufreq/intelliactive/up_threshold_any_cpu_freq","860000");
@@ -203,10 +230,16 @@ static void grouper_power_set_interactive(__attribute__((unused)) struct power_m
                                           __attribute__((unused)) int on)
 {
 	if (on) {
+
     		sysfs_write("/sys/devices/system/cpu/cpufreq/intelliactive/boostpulse","1");
     		sysfs_write("/sys/devices/system/cpu/cpufreq/intelliactive/io_is_busy", "1");
+
 	} else {
+
+
+
     		sysfs_write("/sys/devices/system/cpu/cpufreq/intelliactive/io_is_busy", "0");
+
 	}
 }
 
@@ -266,4 +299,5 @@ struct power_module HAL_MODULE_INFO_SYM = {
     .init = grouper_power_init,
     .setInteractive = grouper_power_set_interactive,
     .powerHint = grouper_power_hint,
+    .setFeature = grouper_power_set_feature,
 };
